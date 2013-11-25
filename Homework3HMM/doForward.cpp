@@ -7,12 +7,6 @@ using namespace std;
 
 char * usage = "usage: ./doForward transitions.txt emissions.txt begin-state end-state sequence";
 
-void ReadTransitions(char * filename)
-{
-
-}
-
-
 int main(int argc, char * argv[])
 {
 

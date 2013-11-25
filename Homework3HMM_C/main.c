@@ -3,8 +3,8 @@
 #include <string.h>
 #include <assert.h>
 
-#define FORWARD_ALGORITHM
-//#define VITERBI_ALGORITHM
+//#define FORWARD_ALGORITHM
+#define VITERBI_ALGORITHM
 //#define BACKWARD_ALGORITHM
 
 //A,C,G,T   (26 for proteins)
@@ -23,6 +23,7 @@ size_t sequenceLength = 0;
 float transitionProbabilities[maxStates-1][maxStates];	//-1 because end state does not transition
 float emissionProbabilites[maxStates-1][alphabetSize];	//-1 because end state does not emit
 float * probabilityMatrix;	//primary data structure (width = states, height = sequence)
+int * viterbiBackPointers;	//Viterbi algorithm data structure to keep track of back pointers
 
 int FindChar(char * string, char c, int length)
 {
@@ -32,7 +33,8 @@ int FindChar(char * string, char c, int length)
 	return -1;
 }
 
-
+//Find the forward probability of an individual cell
+//shouldEmit specifies whether this is a normal node(true), or an end state -> don't emit
 float ForwardProbability(int x, int y, int shouldEmit)
 {
 	int toState = x;
@@ -57,7 +59,7 @@ float ForwardProbability(int x, int y, int shouldEmit)
 	return probability;
 }
 
-
+//Computes the Forward Algorithm Matrix
 int DoForward()
 {
 	int x, y;
@@ -83,13 +85,14 @@ int DoForward()
 	}
 	
 	printf("Forward probability: %f \n", ForwardProbability(numStates - 1, sequenceLength + 1, 0) );
-
+	
+	//Cleanup
 	free(probabilityMatrix);
 
 	return 0;
 }
 
-
+//Compute an individual cell's Viterbi probability and backpointer
 float ViterbiProbability(int x, int y, int shouldEmit)
 {
 	int toState = x;
@@ -118,10 +121,16 @@ float ViterbiProbability(int x, int y, int shouldEmit)
 int DoViterbi()
 {
 	int x, y;
+	size_t probabilityMatrixSize, viterbiBackPointersSize;
 
-	size_t probabilityMatrixSize = (numStates) * (sequenceLength + 1) * sizeof(float);
+	//Allocate memory for data structures
+	probabilityMatrixSize = (numStates) * (sequenceLength + 1) * sizeof(float);
 	probabilityMatrix = (float*)malloc(probabilityMatrixSize);
 	memset(probabilityMatrix, 0, probabilityMatrixSize);
+
+	viterbiBackPointersSize = (numStates) * (sequenceLength + 1) * sizeof(int);
+	viterbiBackPointers = (int*)malloc(viterbiBackPointersSize);
+	memset(viterbiBackPointers, 0, viterbiBackPointersSize);
 
 	//Fill in edge cases
 	probabilityMatrix[0] = 1.0f;
@@ -135,12 +144,15 @@ int DoViterbi()
 	{
 		for(x = 1; x < numStates - 1; x++)
 		{
-			printf("Alpha for state %d time %d: %f \n", x, y, ForwardProbability(x, y, 1) );
+			printf("Viterbi for state %d time %d: %f maxstate %d \n", x, y, 
+				ViterbiProbability(x, y, 1), viterbiBackPointers[y * numStates + x] );
 		}
 	}
 	
-	printf("Forward probability: %f \n", ForwardProbability(numStates - 1, sequenceLength + 1, 0) );
+	printf("Viterbi probability: %f \n", ViterbiProbability(numStates - 1, sequenceLength + 1, 0) );
 
+	//Cleanup
+	free(viterbiBackPointers);
 	free(probabilityMatrix);
 
 	return 0;

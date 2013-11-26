@@ -4,8 +4,8 @@
 #include <assert.h>
 
 //#define FORWARD_ALGORITHM
-#define VITERBI_ALGORITHM
-//#define BACKWARD_ALGORITHM
+//#define VITERBI_ALGORITHM
+#define BACKWARD_ALGORITHM
 
 #ifdef FORWARD_ALGORITHM
 char * usage = "usage: ./doForward transitions.txt emissions.txt begin-state end-state sequence \n";
@@ -134,7 +134,7 @@ void ViterbiPath(int endX, int endY)
 //Computes the Forward Algorithm Matrix as well as Viterbi
 int DoForward(int mode)
 {
-	int x, y;
+	int x, y, inverseX, inverseY;
 	size_t probabilityMatrixSize, viterbiBackPointersSize;
 
 	probabilityMatrixSize = (numStates) * (sequenceLength + 2) * sizeof(float);
@@ -163,13 +163,17 @@ int DoForward(int mode)
 		{
 			switch(mode)
 			{
-			case 0:
+			case 0:	//Forward Algorithm
 				printf("Alpha for state %d time %d: %f \n", x, y-1, ForwardProbability(x, y, 1) );
 				break;
-			case 1:
+			case 1:	//Viterbi Algorithm
 				ViterbiProbability(x, y, 1);
 				printf("Viterbi for state %d time %d: %f maxstate %d \n", x, y-1, 
 					probabilityMatrix[y * numStates + x], viterbiBackPointers[y * numStates + x] );
+				break;
+			case 2:	//Backward Algorithm
+				inverseX = numStates - x;
+				inverseY = sequenceLength + 1 - y;
 				break;
 			default:
 				assert(0);
@@ -179,12 +183,14 @@ int DoForward(int mode)
 	
 	switch(mode)
 	{
-	case 0:
+	case 0:	//Forward Algorithm
 		printf("Forward probability: %f \n", ForwardProbability(numStates - 1, sequenceLength + 1, 0) );
 		break;
-	case 1:
+	case 1:	//Viterbi Algorithm
 		printf("Viterbi probability: %f \n", ViterbiProbability(numStates - 1, sequenceLength + 1, 0) );
 		ViterbiPath(numStates - 1, sequenceLength + 1);
+		break;
+	case 2:	//Backward Algorithm
 		break;
 	default:
 		assert(0);
@@ -287,7 +293,7 @@ int main(int argc, char * argv[])
 	DoForward(1);
 #endif
 #ifdef BACKWARD_ALGORITHM
-	DoBackward();
+	DoForward(2);
 #endif
 
 	//Cleanup

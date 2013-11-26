@@ -102,6 +102,7 @@ float ViterbiProbability(int x, int y, int shouldEmit)
 	return maxProbability;
 }
 
+
 //Display the Viterbi Path
 void ViterbiPath(int endX, int endY)
 {
@@ -130,17 +131,45 @@ void ViterbiPath(int endX, int endY)
 	free(states);
 }
 
+//Compute a cell's backward probability
+//shouldEmit specifies whether this is a normal node(true), or an end state -> don't emit
+float BackwardProbability(int x, int y, int shouldEmit)
+{
+	int fromState = x;
+	float probability = 0.0f;
+	int toState;
+	float transitionProbability, emissionProbability, nextProbability;
+
+	for(toState = 0; toState < numStates - 1; toState++)
+	{
+		transitionProbability = transitionProbabilities[toState][fromState];
+		emissionProbability = 1.0f;
+		nextProbability = 1.0f;
+		if(shouldEmit)
+		{
+			char letter = convertedSequence[y - 1];
+			assert(letter < alphabetSize);
+			emissionProbability = emissionProbabilites[toState][letter];
+			nextProbability = probabilityMatrix[ (y + 1) * numStates + fromState ];
+		}
+		probability += transitionProbability * emissionProbability * nextProbability;
+	}
+	probabilityMatrix[y * numStates + x] = probability;
+	return probability;
+}
+
 
 //Computes the Forward Algorithm Matrix as well as Viterbi
 int DoForward(int mode)
 {
-	int x, y, inverseX, inverseY;
+	int x, y, inverseX, inverseY, totalSequenceLength;
 	size_t probabilityMatrixSize, viterbiBackPointersSize;
 
 	probabilityMatrixSize = (numStates) * (sequenceLength + 2) * sizeof(float);
 	probabilityMatrix = (float*)malloc(probabilityMatrixSize);
 	memset(probabilityMatrix, 0, probabilityMatrixSize);
 
+	//create viterbi data structure
 	if(mode == 1)
 	{
 		viterbiBackPointersSize = (numStates) * (sequenceLength + 2) * sizeof(int);
@@ -150,11 +179,31 @@ int DoForward(int mode)
 
 
 	//Fill in edge cases
-	probabilityMatrix[0] = 1.0f;
-	for(x = 1; x < numStates; x++)
-		probabilityMatrix[x] = 0.0f;
-	for(y = 1; y < sequenceLength + 1; y++)
-		probabilityMatrix[y * numStates] = 0.0f;
+	switch(mode)
+	{
+	case 0:	//forward
+	case 1:	//viterbi
+		probabilityMatrix[0] = 1.0f;
+		for(x = 1; x < numStates; x++)
+			probabilityMatrix[x] = 0.0f;
+		for(y = 1; y < sequenceLength + 1; y++)
+			probabilityMatrix[y * numStates] = 0.0f;
+		break;
+	case 2:	//backwards
+		totalSequenceLength = (sequenceLength+2);
+		probabilityMatrix[totalSequenceLength * numStates - 1] = 1.0f;
+		totalSequenceLength--;
+		for(x = 0; x < numStates - 1; x++)
+			probabilityMatrix[totalSequenceLength * numStates + x] = 0.0f;
+		for(y = 0; y < totalSequenceLength; y++)
+			probabilityMatrix[y * numStates + numStates - 1] = 0.0f;
+		//handle no-emit case
+		printf("Beta for state %d time %d: %f \n", x, y-1, BackwardProbability(numStates- 1, sequenceLength + 1, 0) );
+		break;
+	default:
+		assert(0);
+	}
+
 
 	//Fill in the Matrix
 	for(y = 1; y < sequenceLength + 1; y++)
@@ -172,8 +221,9 @@ int DoForward(int mode)
 					probabilityMatrix[y * numStates + x], viterbiBackPointers[y * numStates + x] );
 				break;
 			case 2:	//Backward Algorithm
-				inverseX = numStates - x;
+				inverseX = numStates - x - 1;
 				inverseY = sequenceLength + 1 - y;
+				printf("Beta for state %d time %d: %f \n", x, y-1, BackwardProbability(inverseX, inverseY, 1) );
 				break;
 			default:
 				assert(0);
@@ -198,7 +248,6 @@ int DoForward(int mode)
 	
 	//Cleanup
 	free(probabilityMatrix);
-
 	if(mode == 1)
 		free(viterbiBackPointers);
 

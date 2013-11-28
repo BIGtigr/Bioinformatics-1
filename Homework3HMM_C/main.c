@@ -138,21 +138,21 @@ float BackwardProbability(int x, int y, int shouldEmit)
 	int fromState = x;
 	float probability = 0.0f;
 	int toState;
-	float transitionProbability, emissionProbability, nextProbability;
+	float transitionProbability, emissionProbability, previousProbability;
 
 	for(toState = 0; toState < numStates - 1; toState++)
 	{
-		transitionProbability = transitionProbabilities[toState][fromState];
+		transitionProbability = transitionProbabilities[fromState][toState];
 		emissionProbability = 1.0f;
-		nextProbability = 1.0f;
+		previousProbability = 1.0f;
 		if(shouldEmit)
 		{
-			char letter = convertedSequence[y - 1];
+			char letter = convertedSequence[y];
 			assert(letter < alphabetSize);
 			emissionProbability = emissionProbabilites[toState][letter];
-			nextProbability = probabilityMatrix[ (y + 1) * numStates + fromState ];
+			previousProbability = probabilityMatrix[ (y+1) * numStates + toState];
 		}
-		probability += transitionProbability * emissionProbability * nextProbability;
+		probability += transitionProbability * emissionProbability * previousProbability;
 	}
 	probabilityMatrix[y * numStates + x] = probability;
 	return probability;
@@ -194,11 +194,11 @@ int DoForward(int mode)
 		probabilityMatrix[totalSequenceLength * numStates - 1] = 1.0f;
 		totalSequenceLength--;
 		for(x = 0; x < numStates - 1; x++)
-			probabilityMatrix[totalSequenceLength * numStates + x] = 0.0f;
+			probabilityMatrix[(totalSequenceLength-1) * numStates + x] = transitionProbabilities[x][numStates-1];
 		for(y = 0; y < totalSequenceLength; y++)
 			probabilityMatrix[y * numStates + numStates - 1] = 0.0f;
 		//handle no-emit case
-		printf("Beta for state %d time %d: %f \n", x, y-1, BackwardProbability(numStates- 1, sequenceLength + 1, 0) );
+		//printf("Beta for state %d time %d: %f \n", x, y-1, BackwardProbability(numStates- 1, sequenceLength + 1, 0) );
 		break;
 	default:
 		assert(0);
@@ -221,6 +221,7 @@ int DoForward(int mode)
 					probabilityMatrix[y * numStates + x], viterbiBackPointers[y * numStates + x] );
 				break;
 			case 2:	//Backward Algorithm
+				if(y == 1) continue;	//skip the first row, handled in edge case section
 				inverseX = numStates - x - 1;
 				inverseY = sequenceLength + 1 - y;
 				printf("Beta for state %d time %d: %f \n", x, y-1, BackwardProbability(inverseX, inverseY, 1) );
@@ -241,6 +242,7 @@ int DoForward(int mode)
 		ViterbiPath(numStates - 1, sequenceLength + 1);
 		break;
 	case 2:	//Backward Algorithm
+		printf("Backward probability: %f \n", BackwardProbability(0, 0, 1) );
 		break;
 	default:
 		assert(0);
